@@ -1,0 +1,33 @@
+.data
+	array:		.space	40
+	array_size:	.word	10
+	prompt:		.asciiz	"please enter an int: "	 
+.text
+.globl main
+
+
+main:	
+	la $t0, array
+	la $t1, array_size
+	lw $t1, 0($t1) # number of element
+	sll  $t1, stl, 2
+	addu $t1, $t0, $t1
+	la $t3, prompt
+	
+	input_loop:
+	slt $t2, $t0, $t1 # set less than 
+	beq $t2, $0, exit_input_loop
+	#prompt foor int input
+	move $a0, $t3
+	li $v0, 4
+	syscall
+	# get input 
+	li $v0, 5
+	syscall
+	sw $v0, 0($t0)    # store int
+	
+	addiu $t0, $t0, 4	#incre, interator
+	j input_loop			#jump out the loop
+	exit_input_loop:
+	
+	exit:

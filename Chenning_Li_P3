@@ -1,0 +1,217 @@
+
+.data
+	numberArray:	.space	116
+	numberOfInput:	.asciiz "How many number(1 to 30) you want to input: "
+	userInput:	.asciiz "Enter an integer: "
+	printArray:	.asciiz "Arrying in ascending order: "
+	printLine:	.asciiz "\n"
+	printSpace:	.asciiz " "
+	searchNumber:	.asciiz "Enter a number that you want to search for: "
+	true:		.asciiz "Number is in the array"
+	false:		.asciiz "Number is not found in the array"
+	.align 2
+	
+.text
+main:
+	#print the statement ask user to input how many number they want to input
+	li $v0, 4 
+	la $a0, numberOfInput
+	syscall
+	
+	#user input and save it into $s0
+	li $v0, 5
+	syscall
+	move $s0, $v0 
+	
+	bgt $s0, 30, endprogram
+	blt $s0, 1, endprogram
+	
+	#print statement ask user to input a number
+	li $v0, 4
+	la $a0 userInput
+	syscall
+	
+	li $v0, 5
+	syscall
+	
+	move $t0, $v0
+	sw $t0, numberArray($zero)
+	
+
+	#while loop begin with 1
+	li $t1, 1	#counter for user input loop
+	li $t2, 4	#array: for i = 0
+	li $t4, 4
+	li $t5, 0
+	li $t6, 0
+	mult $s0, $t4
+	mflo $t7
+while:
+	beq $t1, $s0, exit_while	#if counter equal to user input number that jump to continue function
+	
+	#print the statement prompt user to input a number
+	li $v0, 4
+	la $a0, userInput
+	syscall
+	
+	#User input for number 
+	li $v0, 5
+	syscall
+	move $t0, $v0	#save the number into $t0
+
+	sw $t0, numberArray($t2)	#store the number$t0, into numberArray[0]
+	jal sorting_array		#calls funtion to sort the array
+	addi $t2, $t2, 4		#add $t2 with 4 to increament the numberArray
+	addi $t1, $t1, 1		#add 1 increament the counter
+	j while				#jump back over the loop
+sorting_array:
+	mult $t1, $t4	#find the last element in the array
+	mflo $v0	#save the result in $v0
+	move $t5 $v0	#$t5 = $v0
+	
+	#insertion loop
+	whileloop:
+		lw $a0, numberArray($t5) #load the last element in the array and load into $a0
+		subi $t6, $t5, 4	#find the element before the last element 
+		lw $a1, numberArray($t6)	#save it into $a1
+		blt $a0, $a1, swap	#check to see if the last element if array[i] < array[i-1], then jump to swap
+		subi $t5, $t5, 4	#make the array[i-1] = array[i]
+		beq $t6, 0, exit_whileloop #if array[i-1]=0, then jump out the loop
+		j whileloop		#jump back to the while loop
+		
+	exit_whileloop:
+		jr $ra	#jump back to the while 
+	
+
+		
+swap:
+	sw $a1, numberArray($t5)	#save $a1 into array[i]
+	sw $a0, numberArray($t6)	#save $a0 into array[i-1]
+	j sorting_array		#jump backto the sorting array
+
+
+exit_while:
+	li $t0, 0	#clear $t0 to 0
+	li $t1, 0	#clear $t1 to 0
+	
+	#print the statement "Array in ascending order is: "
+	li $v0, 4
+	la $a0, printArray
+	syscall
+	
+	#print a new line
+	li $v0, 4
+	la $a0, printLine
+	syscall
+
+#print the array loop
+printwhile:
+	beq $t0, $s0, whilesearch	 #counter 
+	lw $t6 numberArray($t1)	#load the first element in the array: array[0] into $t6
+	
+	#print the number
+	li $v0, 1
+	move $a0, $t6
+	syscall
+	
+	#print a space between each number
+	li $v0, 4
+	la $a0, printSpace
+	syscall
+	
+	
+	addi $t1, $t1, 4 	#array[i+1]
+	addi $t0, $t0, 1	#counter +1
+	j printwhile		#jump back to the print array loop
+whilesearch:
+move $t4, $s0
+sll $t4, $t4, 2
+sub $s7, $s7, $t4
+	#print a new line 
+	li $v0, 4
+	la $a0, printLine
+	syscall
+	
+	#print statement "search the number in the array
+	li $v0, 4
+	la $a0, searchNumber
+	syscall
+	
+	#user input for search number
+	li $v0, 5
+	syscall
+	move $a0, $v0 #argument
+
+	la $s7, numberArray
+	li $t4, 0
+	li $t0, 0
+	li $t1, 1
+	li $t3, 0
+	move $t7, $s0
+	subi $t7, $t7, 1
+	jal binarySearch	
+	j whilesearch
+	
+	
+binarySearch:
+		addi $sp, $sp, -20 # make the stack point
+ 		sw $ra, 0($sp)
+  		sw $s7, 4($sp) # save the array 
+  		sw $t0, 8($sp) # start
+  		sw $s0, 12($sp) # end 
+  		sw $a0, 16($sp) # search value 
+		slt $t7, $s0, $t0 # end < start
+  		beq $t7, $t1, valueNotFound #not found 
+		add $s0,$s0,1 
+		sub $t3,$s0, $t0  #(end - start)
+		sra $t3,$t3,1# (end - start)/2
+		add $t6, $t0, $t3  #mid = start + (end - start)/2
+		sll $t6,$t6,2 # time 4 for mid 
+		add $t8, $s7, $t6 #array[mid]
+		 lw $t4, 0($t8)  # out put array[mid]
+		sra $t6,$t6,2 #number divid 4
+		 blt $a0, $t4, recurseToLeft # search value less than mid 
+ 		 bgt $a0, $t4, recurseToRight # search value biger mid 
+  		beq $a0, $t4, valueFound # return n, the index if val = array[n]
+ 		 j end 
+	recurseToLeft:
+ 		 # array, val, lo = same, hi = n-1
+  		addi $t6, $t6 -1
+  		move $s0, $t6
+  		jal binarySearch
+ 		 j end
+	recurseToRight:
+  		# array, val, hi = same, lo = n + 1
+ 		 addi $t6, $t6, 1
+ 		 move $t0, $t6
+ 		 jal binarySearch
+  		j end
+	valueNotFound:
+		la $a0, false
+		li $v0, 4
+		syscall
+		j end
+	valueFound:
+  		la $a0, true
+		li $v0, 4
+		syscall
+
+end:
+	lw $ra, 0($sp)
+ 	lw $s7, 4($sp) #array 
+  	lw $t0, 8($sp) # start 
+  	lw $s0, 12($sp) # end 
+  	lw $a0, 16($sp) # search value 
+  	addi $sp, $sp, 20 # stack point 
+  	jr $ra # return 
+endprogram:
+	li $v0, 10
+	syscall
+	
+	
+	
+	
+	 
+	
+	
+	

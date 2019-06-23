@@ -1,0 +1,101 @@
+# Who:  Chenning Li
+# What: project 2
+# Why:  fibnocci number
+# When: 3/17/2019
+
+
+.data 
+	myArray:	.space 176
+	userInput:	.asciiz "Enter a number: "
+	printSpace:	.asciiz " "
+	positiveError:	.asciiz "\n The number must be a positive number"
+	printNthNumber:	.asciiz "The nth number is: "
+	separateLine:		.asciiz "\n"
+	overflowError:		.asciiz "\n The number is too big that will cause overflow"
+	.align	2
+.text 
+
+main:	li $v0, 4	#Print the statement Enter a number
+	la $a0, userInput 
+	syscall
+	
+	li $v0, 5	#Ask user to input a integer
+	syscall
+	move $s1, $v0
+	
+	li $t0, 0	#load $t0 = 0
+	slt $t1, $s1, $t0 	#compare the user input number, check to see if it is positive or negative
+	beq $t1, 1, postiveError	#if user input is a negative number, then jump to postiveError 
+	
+	li $t0, 0	#a = 0
+	li $t1, 1	#b = 1
+	li $t2, 0	#set i = 0 	
+	
+loop:
+	lui $t4, 0x7FFF		#load first 16 bits integer into $t4	
+	ori $t4, $t4, 0xFFFF	#load last 16 bits integer into $t4
+	subu $t4, $t4, $t1#32bits integer minues b
+	slt $t4, $t4, $t0	
+	beq $t4, 1, overFlow	#if the integer less than a then next run will casue overflow
+	beq $t2, $s1, exit_loop	#for i in N, then exit the loop
+	sw $t0, myArray($s0)	#store a into arry[0]
+	addi $s0, $s0, 4	#arry[i+1]
+	move $t3, $t1		#temp = b
+	addu $t1, $t1, $t0 	#b = b + a 
+	move $t0, $t3 		#a = temp
+	addi $t2, $t2, 1	#i = i + 1
+	j loop			#jump back to the loop
+	
+exit_loop:
+	li $t6, 4	#load 4 into $t6
+	mult $t6, $s1	#multiple user input and $t6
+	mflo $s0	#save the result into $s0
+	subi $s0, $s0, 4	#since the array save from zero, then minues 4
+	lw $t6, myArray($s0)	#load the last number from the array
+	
+	li $v0, 4	#print the statement, the Nth number
+	la $a0, printNthNumber	
+	syscall
+
+	li $v0, 1	#print the last number from the array
+	move $a0, $t6
+	syscall
+	
+	li $v0, 4	#start a new line
+	la $a0, separateLine
+	syscall
+
+	li $s0, 0	#load $s0 with 0
+	
+	while:
+		beq $t2, 0, finish #if i = 0, jump to finish
+		lw $t6, myArray($s0)#load the array into $t6
+		addi $s0, $s0, 4	#array[i+1]
+		li $v0, 1	#print the number
+		move $a0, $t6
+		syscall
+		
+		li $v0, 4	#print space between each number 
+		la $a0, printSpace
+		syscall
+		
+		addi $t2, $t2, -1	#count the while loop,
+		
+		j while
+	#end program
+	finish:
+		li $v0, 10
+		syscall
+	
+postiveError:
+	li $v0, 4	#print the statement "The number must be postice"
+	la $a0, positiveError	
+	syscall 
+	j finish	#jump to the end program
+overFlow:
+	li $v0, 4	#print the statement "The number is too big, that will cause overflow"
+	la $a0, overflowError
+	syscall
+	j finish 	#jump tp the end program
+	
+	
