@@ -1,0 +1,164 @@
+.data
+.eqv			PASS_BUFFER_SZ 257
+.eqv			STR_BUFFER_SZ	256
+.eqv			XOR_BUFFER_SZ 	1024
+.eqv			XOR_BUFFER1_SZ	1024
+.eqv			FILE_BUFFER_SZ	257
+.eqv	CONSOLE_RECEIVER_CONTROL           0xffff0000
+.eqv	CONSOLE_RECEIVER_READY_MASK        0x00000001
+.eqv	CONSOLE_RECEIVER_DATA              0xffff0004
+.eqv	ISO_LF			0x2A  # Line feed (newline)
+.eqv	SYS_PRINT_CHAR	0xB
+.eqv	EXIT_Enter			0x0A
+
+
+FILE_BUFFER:		.space FILE_BUFFER_SZ
+STR_BUFFER:		.space	STR_BUFFER_SZ
+PASS_BUFFER:		.space 	PASS_BUFFER_SZ
+XOR_BUFFER:		.space  XOR_BUFFER_SZ
+XOR_BUFFER1:		.space	XOR_BUFFER1_SZ
+sourcefilepath:		.asciiz  "Enter the path for the source file: "
+destinationfilepath:	.asciiz  "Enter the path for the destinationfile: "
+passphrase:		.asciiz	 "Enter the passphrase: "
+asterisk:		.asciiz "*"
+newline:		.asciiz "\n"
+.align 2
+.text
+.globl main
+main:
+		jal sourcefile
+		jal passphrase_sub
+		jal destinationfile
+		
+		#end program
+		li $v0, 10
+		syscall
+
+#ask user to read the file 
+#load the content from the sourcefile
+sourcefile:
+		#print the statement ask user to input the path of the sourcefile
+		la $a0, sourcefilepath
+		li $v0, 4
+		syscall
+	
+		#User input saved into str_buffer
+		la $a0, STR_BUFFER
+		li $a1, STR_BUFFER_SZ
+		li $v0, 8
+		syscall
+	
+		li $v0, 13		#open the file
+		la $a0, STR_BUFFER
+		li $a1, 0
+		li $a2, 1
+		syscall
+		move $s0, $v0	
+		jr $ra
+#collect passphrase from user input 
+#print them with * into the console		
+passphrase_sub:
+		#print out the statement ask user input the passpharse
+		li $v0, 4		
+		la $a0, passphrase	#prompts user input for the passpharse
+		syscall
+		
+		#save the userinput into the buffer
+		li	$t1, EXIT_Enter
+		la 	$s0, PASS_BUFFER
+	    # Spin-wait for key to be pressed
+    key_wait:
+
+	    lw      $t0, CONSOLE_RECEIVER_CONTROL
+	    andi    $t0, $t0, CONSOLE_RECEIVER_READY_MASK  # Isolate ready bit
+	    beqz    $t0, key_wait
+    
+	    # Read in new character from keyboard to low byte of $a0
+	    # and clear other 3 bytes of $a0
+	   	lbu     $a0, CONSOLE_RECEIVER_DATA
+		beq	$a0, $t1, destinationfile
+		sb	$a0, 0($s0)
+		addi $s0, $s0, 1
+
+	    # Print character and newline
+	    	li      $v0, SYS_PRINT_CHAR
+	    	li      $a0, ISO_LF
+	    	syscall
+		b key_wait
+
+#ask user to input the path for the destination file
+#doing the xor function then write the result into the destinationfile		
+destinationfile:
+		#print a new line
+		li $v0, 4
+		la $a0, newline
+		syscall
+		
+		#print the statement ask user to input the destination file path
+		li $v0, 4
+		la $a0, destinationfilepath
+		syscall
+		
+		#load the buffer into file buffer
+		la $a0, FILE_BUFFER
+		li $a1, FILE_BUFFER_SZ
+		li $v0, 8
+		syscall
+		
+		#open the file, if the file doesn't exist then create a new one
+		la $a0, FILE_BUFFER
+		li $a1, 1
+		li $a2, 0
+		li $v0, 13
+		syscall
+		move $s1, $v0
+		
+		la $s6 PASS_BUFFER
+		
+	
+#doing the xor instruction
+#save the result into the destination file	
+XOR_perform:
+		li $t2, 0
+		li $t1, 0
+		li $v0, 14		#read mode
+		move $a0, $s0
+		la $a1, XOR_BUFFER
+		li $a2, XOR_BUFFER_SZ
+		syscall
+		move $t0, $v0
+		#xor instrusction using passphrase buffer and xor buffer
+		la $s7, XOR_BUFFER
+		lb $t3, 0($s6)
+		lb $t2, 0($s7)
+		addi $s6, $s6, 1
+		addi $s7, $s7, 1
+		xor $t3, $t2, $t3
+		#save the xor character into new buffer
+		la $s5, XOR_BUFFER1
+		sb $t3, 0($s5)
+		addi $s5, $s5, 1
+		beq $0 $v0, close_src
+		j XOR_perform
+		
+		
+close_src:	
+		#write new file
+		move $a0, $s1
+		la $a1, XOR_BUFFER1
+		move $a2, $v0
+		li $v0, 15
+		syscall
+		#close the source file
+		li $v0, 16
+		move $a0, $s0
+		syscall
+		#close the destination file				
+		li $v0, 16
+		move $a0, $s1
+		syscall
+		
+		jr $ra
+		
+		
+		
