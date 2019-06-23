@@ -1,0 +1,45 @@
+.data
+	myArray:	.space 80
+	message:	.asciiz "Enter a number: "
+	message1:	.asciiz " "
+.text
+
+main:
+li $t0,0
+while:
+	beq $t0, 80, exit #while loop if size $t0 = 80 exit the loop
+	 #print the message
+	 li $v0, 4
+	 la $a0, message
+	 syscall
+	 
+	 #ask user to input the number
+	 li $v0, 5
+	 syscall
+	 #store the number into array
+	 sw $v0, myArray($t0)
+	 #every input takes 4 bits so add 4 bits into the arraysize
+	 addi $t0, $t0, 4 
+	 j while
+exit:
+	#clear $t0 to 0
+	li $t0, 0
+	#another loop that load the numbers
+	loop:
+	beq $t0 , 80 , finish #if $t0 = 80 jump to finish
+	lw  $t6, myArray($t0) #load from array into $t6
+	addi $t0, $t0, 4 #add to $t0 each time
+	li $v0,1	
+	move $a0, $t6	#print out $t6
+	syscall
+	li $v0, 4	#print a new line
+	la $a0, message1
+	syscall
+	#jump back to the loop
+	j loop
+	
+	#end calls
+	finish:
+	li $v0,10
+	syscall
+	
